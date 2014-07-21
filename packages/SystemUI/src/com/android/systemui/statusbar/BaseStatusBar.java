@@ -2009,13 +2009,17 @@ public abstract class BaseStatusBar extends SystemUI implements
             }
         }
 
-        mStackScroller.updateOverflowContainerVisibility(onKeyguard
-                && mKeyguardIconOverflowContainer.getIconsView().getChildCount() > 0);
-
-        mStackScroller.changeViewPosition(mDismissView, mStackScroller.getChildCount() - 1);
-        mStackScroller.changeViewPosition(mEmptyShadeView, mStackScroller.getChildCount() - 2);
+        if (onKeyguard && mKeyguardIconOverflowContainer.getIconsView().getChildCount() > 0) {
+            mKeyguardIconOverflowContainer.setVisibility(View.VISIBLE);
+        } else {
+            mKeyguardIconOverflowContainer.setVisibility(View.GONE);
+        }
+        // Move overflow container to second last position.
         mStackScroller.changeViewPosition(mKeyguardIconOverflowContainer,
-                mStackScroller.getChildCount() - 3);
+                mStackScroller.getChildCount() - 2);
+
+        // Now move dismissView to the last position.
+        mStackScroller.changeViewPosition(mDismissView, mStackScroller.getChildCount() - 1);
     }
 
     private boolean shouldShowOnKeyguard(StatusBarNotification sbn) {

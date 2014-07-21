@@ -230,7 +230,15 @@ public class StackStateAnimator {
             delay = mCurrentAdditionalDelay + calculateChildAnimationDelay(viewState, finalState);
         }
 
-        startViewAnimations(child, viewState, delay, duration);
+        // start scale animation
+        if (scaleChanging) {
+            startScaleAnimation(child, viewState);
+        }
+
+        // start alpha animation
+        if (alphaChanging && child.getTranslationX() == 0) {
+            startAlphaAnimation(child, viewState, delay);
+        }
 
         // start height animation
         if (heightChanging && child.getActualHeight() != 0) {

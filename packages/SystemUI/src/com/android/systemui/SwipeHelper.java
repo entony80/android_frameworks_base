@@ -52,8 +52,6 @@ public class SwipeHelper implements Gefingerpoken {
 
     private static LinearInterpolator sLinearInterpolator = new LinearInterpolator();
     private final Interpolator mFastOutLinearInInterpolator;
-    private final int mTouchSlop;
-    private int mSwipeZone;
 
     private float SWIPE_ESCAPE_VELOCITY = 100f; // dp/sec
     private int DEFAULT_ESCAPE_ANIMATION_DURATION = 200; // ms
@@ -87,12 +85,6 @@ public class SwipeHelper implements Gefingerpoken {
     private Runnable mWatchLongPress;
     private long mLongPressTimeout;
 
-    final private int[] mTmpPos = new int[2];
-    private int mFalsingThreshold;
-    private boolean mTouchAboveFalsingThreshold;
-
-    private float mSwipeProgressFadeEnd;
-
     public SwipeHelper(int swipeDirection, Callback callback, Context context) {
         mCallback = callback;
         mHandler = new Handler();
@@ -100,24 +92,10 @@ public class SwipeHelper implements Gefingerpoken {
         mVelocityTracker = VelocityTracker.obtain();
         mDensityScale =  context.getResources().getDisplayMetrics().density;
         mPagingTouchSlop = ViewConfiguration.get(context).getScaledPagingTouchSlop();
-        mTouchSlop = ViewConfiguration.get(context).getScaledTouchSlop();
 
         mLongPressTimeout = (long) (ViewConfiguration.getLongPressTimeout() * 1.5f); // extra long-press!
         mFastOutLinearInInterpolator = AnimationUtils.loadInterpolator(context,
                 android.R.interpolator.fast_out_linear_in);
-        mFalsingThreshold = context.getResources().getDimensionPixelSize(
-                R.dimen.swipe_helper_falsing_threshold);
-        if (swipeDirection == X) {
-            mSwipeZone = SWIPE_ZONE_LEFT | SWIPE_ZONE_RIGHT;
-        } else {
-            mSwipeZone = SWIPE_ZONE_TOP | SWIPE_ZONE_BOTTOM;
-        }
-        mSwipeProgressFadeEnd = SWIPE_PROGRESS_FADE_END;
-    }
-
-    public SwipeHelper(int swipeDirection, int swipeZone, Callback callback, Context context) {
-        this(swipeDirection, callback, context);
-        mSwipeZone = swipeZone;
     }
 
     public boolean isDragging() {

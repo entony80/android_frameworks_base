@@ -39,7 +39,6 @@ import com.android.systemui.R;
 import com.android.systemui.SwipeHelper;
 import com.android.systemui.statusbar.ActivatableNotificationView;
 import com.android.systemui.statusbar.DismissView;
-import com.android.systemui.statusbar.EmptyShadeView;
 import com.android.systemui.statusbar.ExpandableNotificationRow;
 import com.android.systemui.statusbar.ExpandableView;
 import com.android.systemui.statusbar.NotificationData;
@@ -170,7 +169,6 @@ public class NotificationStackScrollLayout extends ViewGroup
     private boolean mExpandedInThisMotion;
     private boolean mScrollingEnabled;
     private DismissView mDismissView;
-    private EmptyShadeView mEmptyShadeView;
     private boolean mDismissAllInProgress;
 
     /**
@@ -209,7 +207,7 @@ public class NotificationStackScrollLayout extends ViewGroup
     private boolean mInterceptDelegateEnabled;
     private boolean mDelegateToScrollView;
     private boolean mDisallowScrollingInThisMotion;
-    private long mGoToFullShadeDelay;
+    private boolean mDismissWillBeGone;
 
     private ViewTreeObserver.OnPreDrawListener mChildrenUpdater
             = new ViewTreeObserver.OnPreDrawListener() {
@@ -296,6 +294,10 @@ public class NotificationStackScrollLayout extends ViewGroup
         mMinimumVelocity = configuration.getScaledMinimumFlingVelocity();
         mMaximumVelocity = configuration.getScaledMaximumFlingVelocity();
         mOverflingDistance = configuration.getScaledOverflingDistance();
+        float densityScale = getResources().getDisplayMetrics().density;
+        float pagingTouchSlop = ViewConfiguration.get(getContext()).getScaledPagingTouchSlop();
+        mSwipeHelper = new SwipeHelper(SwipeHelper.X, this, getContext());
+        mSwipeHelper.setLongPressListener(mLongClickListener);
 
         mSidePaddings = context.getResources()
                 .getDimensionPixelSize(R.dimen.notification_side_padding);
@@ -579,6 +581,11 @@ public class NotificationStackScrollLayout extends ViewGroup
         if (mDismissAllInProgress) {
             return;
         }
+        if (DEBUG) Log.v(TAG, "onChildDismissed: " + v);
+        final View veto = v.findViewById(R.id.veto);
+        if (veto != null && veto.getVisibility() != View.GONE) {
+            veto.performClick();
+        }
         setSwipingInProgress(false);
         if (mDragAnimPendingChildren.contains(v)) {
             // We start the swipe and finish it in the same frame, we don't want any animation
@@ -803,6 +810,7 @@ public class NotificationStackScrollLayout extends ViewGroup
     }
 
     public void dismissViewAnimated(View child, Runnable endRunnable, int delay, long duration) {
+        child.setClipBounds(null);
         mSwipeHelper.dismissChild(child, 0, endRunnable, delay, true, duration);
     }
 
@@ -2450,14 +2458,9 @@ public class NotificationStackScrollLayout extends ViewGroup
         }
     }
 
-    public void goToFullShade(long delay) {
+    public void goToFullShade() {
         updateSpeedBump(true /* visibility */);
         mDismissView.setInvisible();
-        mEmptyShadeView.setInvisible();
-        mGoToFullShadeNeedsAnimation = true;
-        mGoToFullShadeDelay = delay;
-        mNeedsAnimation = true;
-        requestChildrenUpdate();
     }
 
     public void cancelExpandHelper() {
@@ -2497,386 +2500,38 @@ public class NotificationStackScrollLayout extends ViewGroup
         requestChildrenUpdate();
     }
 
-    private int findDarkAnimationOriginIndex(@Nullable PointF screenLocation) {
-        if (screenLocation == null || screenLocation.y < mTopPadding + mTopPaddingOverflow) {
-            return AnimationEvent.DARK_ANIMATION_ORIGIN_INDEX_ABOVE;
-        }
-        if (screenLocation.y > getBottomMostNotificationBottom()) {
-            return AnimationEvent.DARK_ANIMATION_ORIGIN_INDEX_BELOW;
-        }
-        View child = getClosestChildAtRawPosition(screenLocation.x, screenLocation.y);
-        if (child != null) {
-            return getNotGoneIndex(child);
-        } else {
-            return AnimationEvent.DARK_ANIMATION_ORIGIN_INDEX_ABOVE;
-        }
-    }
-
-    private int getNotGoneIndex(View child) {
-        int count = getChildCount();
-        int notGoneIndex = 0;
-        for (int i = 0; i < count; i++) {
-            View v = getChildAt(i);
-            if (child == v) {
-                return notGoneIndex;
-            }
-            if (v.getVisibility() != View.GONE) {
-                notGoneIndex++;
-            }
-        }
-        return -1;
-    }
-
     public void setDismissView(DismissView dismissView) {
         mDismissView = dismissView;
         addView(mDismissView);
     }
 
-    public void setEmptyShadeView(EmptyShadeView emptyShadeView) {
-        mEmptyShadeView = emptyShadeView;
-        addView(mEmptyShadeView);
-    }
-
-    public void updateEmptyShadeView(boolean visible) {
-        int oldVisibility = mEmptyShadeView.willBeGone() ? GONE : mEmptyShadeView.getVisibility();
-        int newVisibility = visible ? VISIBLE : GONE;
-        if (oldVisibility != newVisibility) {
-            if (newVisibility != GONE) {
-                if (mEmptyShadeView.willBeGone()) {
-                    mEmptyShadeView.cancelAnimation();
-                } else {
-                    mEmptyShadeView.setInvisible();
-                }
-                mEmptyShadeView.setVisibility(newVisibility);
-                mEmptyShadeView.setWillBeGone(false);
-                updateContentHeight();
-                notifyHeightChangeListener(mEmptyShadeView);
-            } else {
-                Runnable onFinishedRunnable = new Runnable() {
-                    @Override
-                    public void run() {
-                        mEmptyShadeView.setVisibility(GONE);
-                        mEmptyShadeView.setWillBeGone(false);
-                        updateContentHeight();
-                        notifyHeightChangeListener(mEmptyShadeView);
-                    }
-                };
-                if (mAnimationsEnabled) {
-                    mEmptyShadeView.setWillBeGone(true);
-                    mEmptyShadeView.performVisibilityAnimation(false, onFinishedRunnable);
-                } else {
-                    mEmptyShadeView.setInvisible();
-                    onFinishedRunnable.run();
-                }
-            }
-        }
-    }
-
-    public void setOverflowContainer(NotificationOverflowContainer overFlowContainer) {
-        mOverflowContainer = overFlowContainer;
-        addView(mOverflowContainer);
-    }
-
-    public void updateOverflowContainerVisibility(boolean visible) {
-        int oldVisibility = mOverflowContainer.willBeGone() ? GONE
-                : mOverflowContainer.getVisibility();
-        final int newVisibility = visible ? VISIBLE : GONE;
-        if (oldVisibility != newVisibility) {
-            Runnable onFinishedRunnable = new Runnable() {
-                @Override
-                public void run() {
-                    mOverflowContainer.setVisibility(newVisibility);
-                    mOverflowContainer.setWillBeGone(false);
-                    updateContentHeight();
-                    notifyHeightChangeListener(mOverflowContainer);
-                }
-            };
-            if (!mAnimationsEnabled || !mIsExpanded) {
-                mOverflowContainer.cancelAppearDrawing();
-                onFinishedRunnable.run();
-            } else if (newVisibility != GONE) {
-                mOverflowContainer.performAddAnimation(0,
-                        StackStateAnimator.ANIMATION_DURATION_STANDARD);
-                mOverflowContainer.setVisibility(newVisibility);
-                mOverflowContainer.setWillBeGone(false);
-                updateContentHeight();
-                notifyHeightChangeListener(mOverflowContainer);
-            } else {
-                mOverflowContainer.performRemoveAnimation(
-                        StackStateAnimator.ANIMATION_DURATION_STANDARD,
-                        0.0f,
-                        onFinishedRunnable);
-                mOverflowContainer.setWillBeGone(true);
-            }
-        }
-    }
-
     public void updateDismissView(boolean visible) {
-        int oldVisibility = mDismissView.willBeGone() ? GONE : mDismissView.getVisibility();
+        int oldVisibility = mDismissWillBeGone ? GONE : mDismissView.getVisibility();
         int newVisibility = visible ? VISIBLE : GONE;
         if (oldVisibility != newVisibility) {
-            if (newVisibility != GONE) {
-                if (mDismissView.willBeGone()) {
+            if (oldVisibility == GONE) {
+                if (mDismissWillBeGone) {
                     mDismissView.cancelAnimation();
                 } else {
                     mDismissView.setInvisible();
+                    mDismissView.setVisibility(newVisibility);
                 }
-                mDismissView.setVisibility(newVisibility);
-                mDismissView.setWillBeGone(false);
-                updateContentHeight();
-                notifyHeightChangeListener(mDismissView);
+                mDismissWillBeGone = false;
             } else {
-                Runnable dimissHideFinishRunnable = new Runnable() {
+                mDismissWillBeGone = true;
+                mDismissView.performVisibilityAnimation(false, new Runnable() {
                     @Override
                     public void run() {
                         mDismissView.setVisibility(GONE);
-                        mDismissView.setWillBeGone(false);
-                        updateContentHeight();
-                        notifyHeightChangeListener(mDismissView);
+                        mDismissWillBeGone = false;
                     }
-                };
-                if (mDismissView.isButtonVisible() && mIsExpanded && mAnimationsEnabled) {
-                    mDismissView.setWillBeGone(true);
-                    mDismissView.performVisibilityAnimation(false, dimissHideFinishRunnable);
-                } else {
-                    dimissHideFinishRunnable.run();
-                    mDismissView.showClearButton();
-                }
+                });
             }
         }
     }
 
     public void setDismissAllInProgress(boolean dismissAllInProgress) {
         mDismissAllInProgress = dismissAllInProgress;
-        mDismissView.setDismissAllInProgress(dismissAllInProgress);
-        mAmbientState.setDismissAllInProgress(dismissAllInProgress);
-        if (dismissAllInProgress) {
-            disableClipOptimization();
-        }
-        handleDismissAllClipping();
-    }
-
-    private void handleDismissAllClipping() {
-        final int count = getChildCount();
-        boolean previousChildWillBeDismissed = false;
-        for (int i = 0; i < count; i++) {
-            ExpandableView child = (ExpandableView) getChildAt(i);
-            if (child.getVisibility() == GONE) {
-                continue;
-            }
-            if (mDismissAllInProgress && previousChildWillBeDismissed) {
-                child.setMinClipTopAmount(child.getClipTopAmount());
-            } else {
-                child.setMinClipTopAmount(0);
-            }
-            previousChildWillBeDismissed = canChildBeDismissed(child);
-        }
-    }
-
-    private void disableClipOptimization() {
-        final int count = getChildCount();
-        for (int i = 0; i < count; i++) {
-            ExpandableView child = (ExpandableView) getChildAt(i);
-            if (child.getVisibility() == GONE) {
-                continue;
-            }
-            child.setClipTopOptimization(0);
-        }
-    }
-
-    public boolean isDismissViewNotGone() {
-        return mDismissView.getVisibility() != View.GONE && !mDismissView.willBeGone();
-    }
-
-    public boolean isDismissViewVisible() {
-        return mDismissView.isVisible();
-    }
-
-    public int getDismissViewHeight() {
-        int height = mDismissView.getHeight() + mPaddingBetweenElementsNormal;
-
-        // Hack: Accommodate for additional distance when we only have one notification and the
-        // dismiss all button.
-        if (getNotGoneChildCount() == 2 && getLastChildNotGone() == mDismissView
-                && getFirstChildNotGone() instanceof ActivatableNotificationView) {
-            height += mCollapseSecondCardPadding;
-        }
-        return height;
-    }
-
-    public int getEmptyShadeViewHeight() {
-        return mEmptyShadeView.getHeight();
-    }
-
-    public float getBottomMostNotificationBottom() {
-        final int count = getChildCount();
-        float max = 0;
-        for (int childIdx = 0; childIdx < count; childIdx++) {
-            ExpandableView child = (ExpandableView) getChildAt(childIdx);
-            if (child.getVisibility() == GONE) {
-                continue;
-            }
-            float bottom = child.getTranslationY() + child.getActualHeight();
-            if (bottom > max) {
-                max = bottom;
-            }
-        }
-        return max + getStackTranslation();
-    }
-
-    /**
-     * @param qsMinHeight The minimum height of the quick settings including padding
-     *                    See {@link StackScrollAlgorithm#updateIsSmallScreen}.
-     */
-    public void updateIsSmallScreen(int qsMinHeight) {
-        mStackScrollAlgorithm.updateIsSmallScreen(mMaxLayoutHeight - qsMinHeight);
-    }
-
-    public void setPhoneStatusBar(PhoneStatusBar phoneStatusBar) {
-        this.mPhoneStatusBar = phoneStatusBar;
-    }
-
-    public void setGroupManager(NotificationGroupManager groupManager) {
-        this.mGroupManager = groupManager;
-    }
-
-    public void onGoToKeyguard() {
-        requestAnimateEverything();
-    }
-
-    private void requestAnimateEverything() {
-        if (mIsExpanded && mAnimationsEnabled) {
-            mEverythingNeedsAnimation = true;
-            mNeedsAnimation = true;
-            requestChildrenUpdate();
-        }
-    }
-
-    public boolean isBelowLastNotification(float touchX, float touchY) {
-        int childCount = getChildCount();
-        for (int i = childCount - 1; i >= 0; i--) {
-            ExpandableView child = (ExpandableView) getChildAt(i);
-            if (child.getVisibility() != View.GONE) {
-                float childTop = child.getY();
-                if (childTop > touchY) {
-                    // we are above a notification entirely let's abort
-                    return false;
-                }
-                boolean belowChild = touchY > childTop + child.getActualHeight();
-                if (child == mDismissView) {
-                    if(!belowChild && !mDismissView.isOnEmptySpace(touchX - mDismissView.getX(),
-                                    touchY - childTop)) {
-                        // We clicked on the dismiss button
-                        return false;
-                    }
-                } else if (child == mEmptyShadeView) {
-                    // We arrived at the empty shade view, for which we accept all clicks
-                    return true;
-                } else if (!belowChild){
-                    // We are on a child
-                    return false;
-                }
-            }
-        }
-        return touchY > mTopPadding + mStackTranslation;
-    }
-
-    private void updateExpandButtons() {
-        for (int i = 0; i < getChildCount(); i++) {
-            View child = getChildAt(i);
-            if (child instanceof ExpandableNotificationRow) {
-                ExpandableNotificationRow row = (ExpandableNotificationRow) child;
-                row.updateExpandButton();
-            }
-        }
-    }
-
-    @Override
-    public void onGroupExpansionChanged(ExpandableNotificationRow changedRow, boolean expanded) {
-        boolean animated = mAnimationsEnabled && mIsExpanded;
-        if (animated) {
-            mExpandedGroupView = changedRow;
-            mNeedsAnimation = true;
-        }
-        changedRow.setChildrenExpanded(expanded, animated);
-        onHeightChanged(changedRow, false /* needsAnimation */);
-    }
-
-    @Override
-    public void onGroupsProhibitedChanged() {
-        updateExpandButtons();
-    }
-
-    @Override
-    public void onGroupCreatedFromChildren(NotificationGroupManager.NotificationGroup group) {
-        for (NotificationData.Entry entry : group.children) {
-            ExpandableNotificationRow row = entry.row;
-            if (indexOfChild(row) != -1) {
-                removeView(row);
-                group.summary.row.addChildNotification(row);
-            }
-        }
-    }
-
-    public void generateChildOrderChangedEvent() {
-        if (mIsExpanded && mAnimationsEnabled) {
-            mGenerateChildOrderChangedEvent = true;
-            mNeedsAnimation = true;
-            requestChildrenUpdate();
-        }
-    }
-
-    public void runAfterAnimationFinished(Runnable runnable) {
-        mAnimationFinishedRunnables.add(runnable);
-    }
-
-    public void setHeadsUpManager(HeadsUpManager headsUpManager) {
-        mHeadsUpManager = headsUpManager;
-        mAmbientState.setHeadsUpManager(headsUpManager);
-        mStackScrollAlgorithm.setHeadsUpManager(headsUpManager);
-    }
-
-    public void generateHeadsUpAnimation(ExpandableNotificationRow row, boolean isHeadsUp) {
-        if (mAnimationsEnabled) {
-            mHeadsUpChangeAnimations.add(new Pair<>(row, isHeadsUp));
-            mNeedsAnimation = true;
-            requestChildrenUpdate();
-        }
-    }
-
-    public void setShadeExpanded(boolean shadeExpanded) {
-        mAmbientState.setShadeExpanded(shadeExpanded);
-        mStateAnimator.setShadeExpanded(shadeExpanded);
-    }
-
-    /**
-     * Set the boundary for the bottom heads up position. The heads up will always be above this
-     * position.
-     *
-     * @param height the height of the screen
-     * @param bottomBarHeight the height of the bar on the bottom
-     */
-    public void setHeadsUpBoundaries(int height, int bottomBarHeight) {
-        mAmbientState.setMaxHeadsUpTranslation(height - bottomBarHeight);
-        mStateAnimator.setHeadsUpAppearHeightBottom(height);
-        requestChildrenUpdate();
-    }
-
-    public void setTrackingHeadsUp(boolean trackingHeadsUp) {
-        mTrackingHeadsUp = trackingHeadsUp;
-    }
-
-    public void setScrimController(ScrimController scrimController) {
-        mScrimController = scrimController;
-    }
-
-    public void forceNoOverlappingRendering(boolean force) {
-        mForceNoOverlappingRendering = force;
-    }
-
-    @Override
-    public boolean hasOverlappingRendering() {
-        return !mForceNoOverlappingRendering && super.hasOverlappingRendering();
     }
 
     /**

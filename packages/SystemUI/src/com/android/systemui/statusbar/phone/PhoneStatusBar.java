@@ -995,15 +995,11 @@ public class PhoneStatusBar extends BaseStatusBar implements DemoMode,
         SpeedBumpView speedBump = (SpeedBumpView) LayoutInflater.from(mContext).inflate(
                         R.layout.status_bar_notification_speed_bump, mStackScroller, false);
         mStackScroller.setSpeedBumpView(speedBump);
-        mEmptyShadeView = (EmptyShadeView) LayoutInflater.from(mContext).inflate(
-                R.layout.status_bar_no_notifications, mStackScroller, false);
-        mStackScroller.setEmptyShadeView(mEmptyShadeView);
         mDismissView = (DismissView) LayoutInflater.from(mContext).inflate(
                 R.layout.status_bar_notification_dismiss_all, mStackScroller, false);
         mDismissView.setOnButtonClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                MetricsLogger.action(mContext, MetricsLogger.ACTION_DISMISS_ALL_NOTES);
                 clearAllNotifications();
             }
         });
@@ -1371,20 +1367,9 @@ public class PhoneStatusBar extends BaseStatusBar implements DemoMode,
         final ArrayList<View> viewsToHide = new ArrayList<View>(numChildren);
         for (int i = 0; i < numChildren; i++) {
             final View child = mStackScroller.getChildAt(i);
-            if (child instanceof ExpandableNotificationRow) {
-                if (mStackScroller.canChildBeDismissed(child)) {
-                    if (child.getVisibility() == View.VISIBLE) {
-                        viewsToHide.add(child);
-                    }
-                }
-                ExpandableNotificationRow row = (ExpandableNotificationRow) child;
-                List<ExpandableNotificationRow> children = row.getNotificationChildren();
-                if (row.areChildrenExpanded() && children != null) {
-                    for (ExpandableNotificationRow childRow : children) {
-                        if (childRow.getVisibility() == View.VISIBLE) {
-                            viewsToHide.add(childRow);
-                        }
-                    }
+            if (mStackScroller.canChildBeDismissed(child)) {
+                if (child.getVisibility() == View.VISIBLE) {
+                    viewsToHide.add(child);
                 }
             }
         }
@@ -1393,7 +1378,60 @@ public class PhoneStatusBar extends BaseStatusBar implements DemoMode,
             return;
         }
 
-        addPostCollapseAction(new Runnable() {
+        mPostCollapseCleanup = new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    mBarService.onClearAllNotifications(mCurrentUserId);
+                } catch (Exception ex) { }
+            }
+        };
+
+        performDismissAllAnimations(viewsToHide);
+
+    }
+
+    private void performDismissAllAnimations(ArrayList<View> hideAnimatedList) {
+        Runnable animationFinishAction = new Runnable() {
+            @Override
+            public void run() {
+                mStackScroller.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        mStackScroller.setDismissAllInProgress(false);
+                    }
+                });
+                animateCollapsePanels(CommandQueue.FLAG_EXCLUDE_NONE);
+            }
+        };
+
+        // let's disable our normal animations
+        mStackScroller.setDismissAllInProgress(true);
+
+        // Decrease the delay for every row we animate to give the sense of
+        // accelerating the swipes
+        int rowDelayDecrement = 10;
+        int currentDelay = 140;
+        int totalDelay = 0;
+        int numItems = hideAnimatedList.size();
+        for (int i = 0; i < numItems; i++) {
+            View view = hideAnimatedList.get(i);
+            Runnable endRunnable = null;
+            if (i == numItems - 1) {
+                endRunnable = animationFinishAction;
+            }
+            mStackScroller.dismissViewAnimated(view, endRunnable, totalDelay, 260);
+            currentDelay = Math.max(50, currentDelay - rowDelayDecrement);
+            totalDelay += currentDelay;
+        }
+    }
+
+    /**
+     * Hack to improve glyph rasterization for scaled text views.
+     */
+    private void startGlyphRasterizeHack() {
+        mStatusBarView.getViewTreeObserver().addOnPreDrawListener(
+                new ViewTreeObserver.OnPreDrawListener() {
             @Override
             public void run() {
                 mStackScroller.setDismissAllInProgress(false);
@@ -1857,88 +1895,29 @@ public class PhoneStatusBar extends BaseStatusBar implements DemoMode,
         updateRowStates();
         updateSpeedbump();
         updateClearAll();
-        updateEmptyShadeView();
 
-        updateQsExpansionEnabled();
+        mNotificationPanel.setQsExpansionEnabled(provisioned && mUserSetup);
         mShadeUpdates.check();
     }
 
-    /**
-     * Disable QS if device not provisioned.
-     * If the user switcher is simple then disable QS during setup because
-     * the user intends to use the lock screen user switcher, QS in not needed.
-     */
-    private void updateQsExpansionEnabled() {
-        mNotificationPanel.setQsExpansionEnabled(isDeviceProvisioned()
-                && (mUserSetup || mUserSwitcherController == null
-                        || !mUserSwitcherController.isSimpleUserSwitcher())
-                && ((mDisabled2 & StatusBarManager.DISABLE2_QUICK_SETTINGS) == 0)
-                && !ONLY_CORE_APPS);
-    }
-
-    private void updateNotificationShadeForChildren() {
-        ArrayList<ExpandableNotificationRow> toRemove = new ArrayList<>();
-        boolean orderChanged = false;
-        for (int i = 0; i < mStackScroller.getChildCount(); i++) {
-            View view = mStackScroller.getChildAt(i);
-            if (!(view instanceof ExpandableNotificationRow)) {
-                // We don't care about non-notification views.
-                continue;
-            }
-
-            ExpandableNotificationRow parent = (ExpandableNotificationRow) view;
-            List<ExpandableNotificationRow> children = parent.getNotificationChildren();
-            List<ExpandableNotificationRow> orderedChildren = mTmpChildOrderMap.get(parent);
-
-            // lets first remove all undesired children
-            if (children != null) {
-                toRemove.clear();
-                for (ExpandableNotificationRow childRow : children) {
-                    if (orderedChildren == null || !orderedChildren.contains(childRow)) {
-                        toRemove.add(childRow);
-                    }
-                }
-                for (ExpandableNotificationRow remove : toRemove) {
-                    parent.removeChildNotification(remove);
-                    mStackScroller.notifyGroupChildRemoved(remove);
-                }
-            }
-
-            // We now add all the children which are not in there already
-            for (int childIndex = 0; orderedChildren != null && childIndex < orderedChildren.size();
-                    childIndex++) {
-                ExpandableNotificationRow childView = orderedChildren.get(childIndex);
-                if (children == null || !children.contains(childView)) {
-                    parent.addChildNotification(childView, childIndex);
-                    mStackScroller.notifyGroupChildAdded(childView);
-                }
-            }
-
-            // Finally after removing and adding has been beformed we can apply the order.
-            orderChanged |= parent.applyChildOrder(orderedChildren);
-        }
-        if (orderChanged) {
-            mStackScroller.generateChildOrderChangedEvent();
-        }
-    }
-
-    private boolean packageHasVisibilityOverride(String key) {
-        return mNotificationData.getVisibilityOverride(key)
-                != NotificationListenerService.Ranking.VISIBILITY_NO_OVERRIDE;
-    }
-
     private void updateClearAll() {
-        boolean showDismissView =
-                mState != StatusBarState.KEYGUARD &&
-                mNotificationData.hasActiveClearableNotifications();
+        boolean showDismissView = false;
+        if (mState != StatusBarState.KEYGUARD) {
+            for (int i = 0; i < mNotificationData.size(); i++) {
+                Entry entry = mNotificationData.get(i);
+                if (entry.row.getParent() == null) {
+                    // This view isn't even added, so the stack scroller doesn't
+                    // know about it. Ignore completely.
+                    continue;
+                }
+                if (entry.row.getVisibility() != View.GONE && entry.expanded != null
+                        && entry.notification.isClearable()) {
+                    showDismissView = true;
+                    break;
+                }
+            }
+        }
         mStackScroller.updateDismissView(showDismissView);
-    }
-
-    private void updateEmptyShadeView() {
-        boolean showEmptyShade =
-                mState != StatusBarState.KEYGUARD &&
-                        mNotificationData.getActiveNotifications().size() == 0;
-        mNotificationPanel.setShadeEmpty(showEmptyShade);
     }
 
     private void updateSpeedbump() {
@@ -2715,7 +2694,10 @@ public class PhoneStatusBar extends BaseStatusBar implements DemoMode,
             float speedUpFactor) {
         if (!force &&
                 (mState == StatusBarState.KEYGUARD || mState == StatusBarState.SHADE_LOCKED)) {
-            runPostCollapseRunnables();
+            if (mPostCollapseCleanup != null) {
+                mPostCollapseCleanup.run();
+                mPostCollapseCleanup = null;
+            }
             return;
         }
         if (SPEW) {
@@ -4752,11 +4734,10 @@ public class PhoneStatusBar extends BaseStatusBar implements DemoMode,
     }
 
     public void onTrackingStarted() {
-        runPostCollapseRunnables();
-    }
-
-    public void onClosingFinished() {
-        runPostCollapseRunnables();
+        if (mPostCollapseCleanup != null) {
+            mPostCollapseCleanup.run();
+            mPostCollapseCleanup = null;
+        }
     }
 
     public void onUnlockHintStarted() {
