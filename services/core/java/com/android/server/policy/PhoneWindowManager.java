@@ -6189,6 +6189,8 @@ public class PhoneWindowManager implements WindowManagerPolicy {
             case KeyEvent.KEYCODE_CAMERA:
             case KeyEvent.KEYCODE_FOCUS:
                 return mCameraWakeScreen;
+            case KeyEvent.KEYCODE_HOME:
+                return mHomeWakeScreen;
         }
         return true;
     }
@@ -6234,6 +6236,8 @@ public class PhoneWindowManager implements WindowManagerPolicy {
             case KeyEvent.KEYCODE_CAMERA:
             case KeyEvent.KEYCODE_FOCUS:
                 return mCameraWakeScreen;
+            case KeyEvent.KEYCODE_HOME:
+                return mHomeWakeScreen;
         }
         return true;
     }
