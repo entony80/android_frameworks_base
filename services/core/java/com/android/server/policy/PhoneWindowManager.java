@@ -7231,10 +7231,10 @@ public class PhoneWindowManager implements WindowManagerPolicy {
                     mBootMsgDialog.setMessage(Html.fromHtml(msg +
                                                             "<br><b><font color=\"#" + randomColor + "\">" +
                                                             currentPackageName +
-                                                            "</font><br><br>Powered by CyanPop</b>"));
+                                                            "</font><br><br>Powered by RolanDroid</b>"));
                 }
                 else {
-                    mBootMsgDialog.setMessage(Html.fromHtml(msg + "<br><br><b>Powered by CyanPop</b>"));
+                    mBootMsgDialog.setMessage(Html.fromHtml(msg + "<br><br><b>Powered by RolanDroid</b>"));
                 }
             }
         });
