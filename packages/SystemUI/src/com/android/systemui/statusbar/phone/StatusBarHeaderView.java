@@ -80,6 +80,7 @@ import java.text.NumberFormat;
 
 import cyanogenmod.app.StatusBarPanelCustomTile;
 import cyanogenmod.providers.CMSettings;
+import org.cyanogenmod.internal.logging.CMMetricsLogger;
 
 /**
  * The view to manage the header area in the expanded status bar.
@@ -805,7 +806,7 @@ public class StatusBarHeaderView extends RelativeLayout implements View.OnClickL
 
                 @Override
                 public int getMetricsCategory() {
-                    return MetricsConstants.DONT_TRACK_ME_BRO;
+                    return CMMetricsLogger.DONT_LOG;
                 }
             };
         }
