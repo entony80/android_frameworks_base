@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.internal.util.temasek;
+package com.android.internal.util.cyanpop;
 
 import android.content.Context;
 import android.content.res.Resources;
@@ -22,7 +22,7 @@ import android.net.ConnectivityManager;
 
 import java.util.Locale;
 
-public class TemasekUtils {
+public class CyanpopUtils {
 
     public static boolean isNavBarDefault(Context context) {
         return context.getResources().getBoolean(

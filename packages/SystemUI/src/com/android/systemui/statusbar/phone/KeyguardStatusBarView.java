@@ -34,7 +34,7 @@ import android.widget.ImageView;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 
-import com.android.internal.util.temasek.TemasekUtils;
+import com.android.internal.util.cyanpop.CyanpopUtils;
 import com.android.systemui.BatteryLevelTextView;
 import com.android.systemui.BatteryMeterView;
 import com.android.systemui.R;
@@ -91,7 +91,7 @@ public class KeyguardStatusBarView extends RelativeLayout {
         mMultiUserAvatar = (ImageView) findViewById(R.id.multi_user_avatar);
         mBatteryLevel = (BatteryLevelTextView) findViewById(R.id.battery_level_text);
         mCarrierLabel = (TextView) findViewById(R.id.keyguard_carrier_text);
-        if (TemasekUtils.isWifiOnly(getContext())) {
+        if (CyanpopUtils.isWifiOnly(getContext())) {
             mCarrierLabel.setText("");
         }
         loadDimens();

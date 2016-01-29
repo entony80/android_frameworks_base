@@ -14,7 +14,7 @@
 * limitations under the License.
 */
 
-package com.android.internal.util.temasek;
+package com.android.internal.util.cyanpop;
 
 import android.content.Context;
 import android.graphics.Bitmap;

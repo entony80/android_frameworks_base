@@ -92,7 +92,7 @@ import com.android.internal.util.cm.ActionUtils;
 import cyanogenmod.providers.CMSettings;
 import dalvik.system.DexClassLoader;
 import android.text.Html;
-import com.android.internal.util.temasek.DimensionConverter;
+import com.android.internal.util.cyanpop.DimensionConverter;
 import android.util.DisplayMetrics;
 import android.util.EventLog;
 import android.util.Log;
