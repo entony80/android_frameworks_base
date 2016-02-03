@@ -334,7 +334,7 @@ public class NotificationPanelView extends PanelView implements
         setQSBackgroundAlpha();
 
         mLockPatternUtils = new CmLockPatternUtils(getContext());
-        if (mLockPatternUtils.isThirdPartyKeyguardEnabled()) {
+        if (mLockPatternUtils.isThirdPartyKeyguardEnabled() && mLiveLockScreenEnabled) {
             mThirdPartyKeyguardViewComponent = mLockPatternUtils.getThirdPartyKeyguardComponent();
         }
     }
