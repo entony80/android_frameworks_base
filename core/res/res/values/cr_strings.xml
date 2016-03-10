@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+ò<?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
 
     <string name="default_string">Default</string>
@@ -19,11 +19,6 @@
     <string name="animation_grow_shrink_left">Grow in (Left)</string>
     <string name="animation_grow_shrink_right">Grow in (Right)</string>
     <string name="action_null">Blank</string>
-
-    <!-- [CHAR LIMIT=NONE] Title of an application permission, listed so the user can choose whether they want to allow the application to do this. -->
-    <string name="permlab_resetBatteryStats">reset battery statistics</string>
-    <!-- [CHAR LIMIT=NONE] Description of an application permission, listed so the user can choose whether they want to allow the application to do this. -->
-    <string name="permdesc_resetBatteryStats">Allows an application to reset the current low-level battery use data.</string>
 
     <!-- Button to soft reboot the device, within the Reboot Options dialog -->
     <string name="reboot_systemui">Restart SystemUI</string>
