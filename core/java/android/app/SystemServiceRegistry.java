@@ -254,9 +254,7 @@ final class SystemServiceRegistry {
                 new StaticServiceFetcher<BatteryManager>() {
             @Override
             public BatteryManager createService() {
-                IBinder b = ServiceManager.getService(Context.BATTERY_SERVICE);
-                IBatteryService service = IBatteryService.Stub.asInterface(b);
-                return new BatteryManager(service);
+                return new BatteryManager();
             }});
 
         registerService(Context.NFC_SERVICE, NfcManager.class,
