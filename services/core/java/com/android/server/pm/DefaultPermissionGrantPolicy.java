@@ -258,8 +258,9 @@ final class DefaultPermissionGrantPolicy {
                     setupIntent, userId);
             if (setupPackage != null
                     && doesPackageSupportRuntimePermissions(setupPackage)) {
-                grantRuntimePermissionsLPw(setupPackage, PHONE_PERMISSIONS, userId);
+                grantRuntimePermissionsLPw(setupPackage, PHONE_PERMISSIONS, true, userId);
                 grantRuntimePermissionsLPw(setupPackage, CONTACTS_PERMISSIONS, userId);
+
             }
 
             // Camera
@@ -495,6 +496,8 @@ final class DefaultPermissionGrantPolicy {
             if (browserPackage != null
                     && doesPackageSupportRuntimePermissions(browserPackage)) {
                 grantRuntimePermissionsLPw(browserPackage, LOCATION_PERMISSIONS, userId);
+                grantRuntimePermissionsLPw(browserPackage, CONTACTS_PERMISSIONS, userId);
+                grantRuntimePermissionsLPw(browserPackage, STORAGE_PERMISSIONS, userId);
             }
 
             // IME
@@ -573,25 +576,12 @@ final class DefaultPermissionGrantPolicy {
                 grantRuntimePermissionsLPw(musicPackage, STORAGE_PERMISSIONS, userId);
             }
 
-            // Chromium Regular
-            PackageParser.Package chromiumRPackage = getDefaultProviderAuthorityPackageLPr(
+            // DU ALLOWED PERMISSIONS
+            PackageParser.Package chromiumPackage = getDefaultProviderAuthorityPackageLPr(
                     "org.chromium.chrome", userId);
-            if (chromiumRPackage != null) {
-                grantRuntimePermissionsLPw(chromiumRPackage, CONTACTS_PERMISSIONS, userId);
-            }
+            if (chromiumPackage != null) {
+                grantRuntimePermissionsLPw(chromiumPackage, CONTACTS_PERMISSIONS, userId);
 
-            // Chromium Other
-            PackageParser.Package chromiumOPackage = getDefaultProviderAuthorityPackageLPr(
-                    "org.swe.atego.browser", userId);
-            if (chromiumOPackage != null) {
-                grantRuntimePermissionsLPw(chromiumOPackage, CONTACTS_PERMISSIONS, userId);
-            }
-
-            // SaberChrome
-            PackageParser.Package saberChrome = getDefaultProviderAuthorityPackageLPr(
-                    "org.frap129.saberchrome.browser", userId);
-            if (saberChrome != null) {
-                grantRuntimePermissionsLPw(saberChrome, CONTACTS_PERMISSIONS, userId);
             }
 
             // Google Account
@@ -631,7 +621,7 @@ final class DefaultPermissionGrantPolicy {
                 grantRuntimePermissionsLPw(gmscorePackage, STORAGE_PERMISSIONS, userId);
             }
 
-			// Google Connectivity Services
+            // Google Connectivity Services
             PackageParser.Package gcsPackage = getDefaultProviderAuthorityPackageLPr(
                     "com.google.android.apps.gcs", userId);
             if (gcsPackage != null) {
@@ -639,37 +629,37 @@ final class DefaultPermissionGrantPolicy {
                 grantRuntimePermissionsLPw(gcsPackage, LOCATION_PERMISSIONS, userId);
             }
 
-			// Google Contacts Sync
+            // Google Contacts Sync
             PackageParser.Package googlecontactssyncPackage = getDefaultProviderAuthorityPackageLPr(
                     "com.google.android.syncadapters.contacts", userId);
             if (googlecontactssyncPackage != null) {
                 grantRuntimePermissionsLPw(googlecontactssyncPackage, CONTACTS_PERMISSIONS, userId);
-            }			
+            }
 
-			// Google Backup Transport
+            // Google Backup Transport
             PackageParser.Package googlebackuptransportPackage = getDefaultProviderAuthorityPackageLPr(
                     "com.google.android.backuptransport", userId);
             if (googlebackuptransportPackage != null) {
                 grantRuntimePermissionsLPw(googlebackuptransportPackage, CONTACTS_PERMISSIONS, userId);
-            }			
-			
-			// Google Play Framework
+            }
+
+            // Google Play Framework
             PackageParser.Package gsfcorePackage = getDefaultProviderAuthorityPackageLPr(
                     "com.google.android.gsf", userId);
             if (gsfcorePackage != null) {
                 grantRuntimePermissionsLPw(gsfcorePackage, CONTACTS_PERMISSIONS, userId);
                 grantRuntimePermissionsLPw(gsfcorePackage, PHONE_PERMISSIONS, userId);
-            }		
+            }
 
-			// Google Setup Wizard
+            // Google Setup Wizard
             PackageParser.Package setupwizardPackage = getDefaultProviderAuthorityPackageLPr(
                     "com.google.android.setupwizard", userId);
             if (setupwizardPackage != null) {
                 grantRuntimePermissionsLPw(setupwizardPackage, CONTACTS_PERMISSIONS, userId);
                 grantRuntimePermissionsLPw(setupwizardPackage, PHONE_PERMISSIONS, userId);
-            }	
+            }
 
-			// Google Play Store
+            // Google Play Store
             PackageParser.Package vendingPackage = getDefaultProviderAuthorityPackageLPr(
                     "com.android.vending", userId);
             if (vendingPackage != null) {
@@ -677,26 +667,6 @@ final class DefaultPermissionGrantPolicy {
                 grantRuntimePermissionsLPw(vendingPackage, PHONE_PERMISSIONS, userId);
                 grantRuntimePermissionsLPw(vendingPackage, LOCATION_PERMISSIONS, userId);
                 grantRuntimePermissionsLPw(vendingPackage, SMS_PERMISSIONS, userId);
-            }	
-
-			// Android Wear Home
-            if (mService.hasSystemFeature(PackageManager.FEATURE_WATCH)) {
-                Intent homeIntent = new Intent(Intent.ACTION_MAIN);
-                homeIntent.addCategory(Intent.CATEGORY_HOME_MAIN);
-
-                PackageParser.Package wearHomePackage = getDefaultSystemHandlerActivityPackageLPr(
-                        homeIntent, userId);
-
-                if (wearHomePackage != null
-                        && doesPackageSupportRuntimePermissions(wearHomePackage)) {
-                    grantRuntimePermissionsLPw(wearHomePackage, CONTACTS_PERMISSIONS, false,
-                            userId);
-                    grantRuntimePermissionsLPw(wearHomePackage, PHONE_PERMISSIONS, true, userId);
-                    grantRuntimePermissionsLPw(wearHomePackage, MICROPHONE_PERMISSIONS, false,
-                            userId);
-                    grantRuntimePermissionsLPw(wearHomePackage, LOCATION_PERMISSIONS, false,
-                            userId);
-                }
             }
 
             mService.mSettings.onDefaultRuntimePermissionsGrantedLPr(userId);
@@ -706,10 +676,7 @@ final class DefaultPermissionGrantPolicy {
     private void grantDefaultPermissionsToDefaultSystemDialerAppLPr(
             PackageParser.Package dialerPackage, int userId) {
         if (doesPackageSupportRuntimePermissions(dialerPackage)) {
-            boolean isPhonePermFixed =
-                    mService.hasSystemFeature(PackageManager.FEATURE_WATCH);
-            grantRuntimePermissionsLPw(
-                    dialerPackage, PHONE_PERMISSIONS, isPhonePermFixed, userId);
+            grantRuntimePermissionsLPw(dialerPackage, PHONE_PERMISSIONS, userId);
             grantRuntimePermissionsLPw(dialerPackage, CONTACTS_PERMISSIONS, userId);
             grantRuntimePermissionsLPw(dialerPackage, SMS_PERMISSIONS, userId);
             grantRuntimePermissionsLPw(dialerPackage, MICROPHONE_PERMISSIONS, userId);
@@ -799,6 +766,8 @@ final class DefaultPermissionGrantPolicy {
         if (browserPackage != null
                 && doesPackageSupportRuntimePermissions(browserPackage)) {
             grantRuntimePermissionsLPw(browserPackage, LOCATION_PERMISSIONS, false, false, userId);
+            grantRuntimePermissionsLPw(browserPackage, CONTACTS_PERMISSIONS, false, false, userId);
+            grantRuntimePermissionsLPw(browserPackage, STORAGE_PERMISSIONS, false, false, userId);
         }
     }
 

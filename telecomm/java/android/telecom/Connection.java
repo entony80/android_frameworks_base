@@ -278,15 +278,8 @@ public abstract class Connection extends Conferenceable {
      */
     public static final int CAPABILITY_SUPPORTS_TRANSFER = 0x04000000;
 
-    /**
-     * Indicates that the connection itself wants to handle any sort of reply response, rather than
-     * relying on SMS.
-     * @hide
-     */
-    public static final int CAPABILITY_CAN_SEND_RESPONSE_VIA_CONNECTION = 0x00400000;
-
     //**********************************************************************************************
-    // Next CAPABILITY value: 0x00800000
+    // Next CAPABILITY value: 0x08000000
     //**********************************************************************************************
 
     /**
@@ -471,10 +464,6 @@ public abstract class Connection extends Conferenceable {
         if (can(capabilities, CAPABILITY_CONFERENCE_HAS_NO_CHILDREN)) {
             builder.append(" CAPABILITY_SINGLE_PARTY_CONFERENCE");
         }
-        if (can(capabilities, CAPABILITY_CAN_SEND_RESPONSE_VIA_CONNECTION)) {
-            builder.append(" CAPABILITY_CAN_SEND_RESPONSE_VIA_CONNECTION");
-        }
-
         builder.append("]");
         return builder.toString();
     }
@@ -1966,20 +1955,6 @@ public abstract class Connection extends Conferenceable {
      * @hide
      */
     public void onTransfer() { }
-
-    /**
-     * Notifies ths Connection of a request reject with a message.
-     *
-     * @hide
-     */
-    public void onReject(String replyMessage) {}
-
-    /**
-     * Notifies the Connection of a request to silence the ringer.
-     *
-     * @hide
-     */
-    public void onSilence() {}
 
     /**
      * Notifies this Connection whether the user wishes to proceed with the post-dial DTMF codes.
