@@ -2791,6 +2791,12 @@ public final class Settings {
         public static final String RINGTONE_2 = "ringtone_2";
 
         /**
+	   	 * Heads up timeout configuration
+         * @hide
+         */
+        public static final String HEADS_UP_TIMEOUT = "heads_up_timeout";
+
+        /**
          * Persistent store for the SIM-3 ringtone URI.
          * <p>
          * If you need to play SIM-3 ringtone at any given time, it is recommended
