@@ -5325,11 +5325,6 @@ public class PhoneStatusBar extends BaseStatusBar implements DemoMode,
 
         if (mCustomMaxKeyguard) {
             return mMaxKeyguardNotifConfig;
-
-        } else {
-            return mKeyguardMaxNotificationCount;
-        }    
-
         } else {        
             int max = mKeyguardMaxNotificationCount;
             // When an interactive live lockscreen is showing
@@ -5339,7 +5334,7 @@ public class PhoneStatusBar extends BaseStatusBar implements DemoMode,
                 max--;
             }
             return max;
-        } 
+        }    
     }
 
     public NavigationBarView getNavigationBarView() {
