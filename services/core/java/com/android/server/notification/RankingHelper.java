@@ -206,8 +206,8 @@ public class RankingHelper implements RankingConfig {
         for (int i = N - 1; i >= 0; i--) {
             final Record r = mRecords.valueAt(i);
             if (r.priority == DEFAULT_PRIORITY && r.peekable == DEFAULT_PEEKABLE
-                    && r.visibility == DEFAULT_VISIBILITY && r.keyguard == DEFAULT_KEYGUARD) {
-                mRecords.remove(i);
+                    && r.visibility == DEFAULT_VISIBILITY) {
+                mRecords.removeAt(i);
             }
         }
     }
