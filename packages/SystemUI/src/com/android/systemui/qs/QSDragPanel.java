@@ -2077,7 +2077,11 @@ public class QSDragPanel extends QSPanel implements View.OnDragListener, View.On
                 return mContext.getText(R.string.broadcast_tile).toString();
             } else if (QSUtils.isStaticQsTile(spec)) {
                 int resource = QSTileHost.getLabelResource(spec);
-                return mContext.getText(resource).toString();
+                if (resource != 0) {
+                    return mContext.getText(resource).toString();
+                } else {
+                    return spec;
+                }
             } else if (QSUtils.isDynamicQsTile(spec)) {
                 return QSUtils.getDynamicQSTileLabel(mContext,
                         UserHandle.myUserId(), spec);
@@ -2092,8 +2096,12 @@ public class QSDragPanel extends QSPanel implements View.OnDragListener, View.On
                         QSUtils.getDynamicQSTileResIconId(mContext, UserHandle.myUserId(), spec))
                         .getDrawable(mContext);
             } else if (QSUtils.isStaticQsTile(spec)) {
-                return QSTile.ResourceIcon.get(QSTileHost.getIconResource(spec))
-                        .getDrawable(mContext);
+                final int res = QSTileHost.getIconResource(spec);
+                if (res != 0) {
+                    return QSTile.ResourceIcon.get(res).getDrawable(mContext);
+                } else {
+                    return mContext.getPackageManager().getDefaultActivityIcon();
+                }
             } else {
                 QSTile<?> tile = mHost.getTile(spec);
                 if (tile != null) {
