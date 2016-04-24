@@ -20,11 +20,6 @@
     <string name="animation_grow_shrink_right">Cresce in (Destra)</string>
     <string name="action_null">Vuoto</string>
 
-    <!-- [CHAR LIMIT=NONE] Title of an application permission, listed so the user can choose whether they want to allow the application to do this. -->
-    <string name="permlab_resetBatteryStats">Ripristina le statistiche della batteria</string>
-    <!-- [CHAR LIMIT=NONE] Description of an application permission, listed so the user can choose whether they want to allow the application to do this. -->
-    <string name="permdesc_resetBatteryStats">Consente di ripristinare i dati di utilizzo di un'applicazione quando la batteria raggiunge un livello basso.</string>
-
     <!-- Button to soft reboot the device, within the Reboot Options dialog -->
     <string name="reboot_systemui">Riavvia SystemUI</string>
 
