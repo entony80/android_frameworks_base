@@ -732,77 +732,9 @@ public abstract class BaseStatusBar extends SystemUI implements
         mContext.registerReceiverAsUser(mAllUsersReceiver, UserHandle.ALL, allUsersFilter,
                 null, null);
         updateCurrentProfilesCache();
-        mPieSettingsObserver.onChange(false);
-        mContext.getContentResolver().registerContentObserver(Settings.System.getUriFor(
-                Settings.System.PA_PIE_STATE), false, mPieSettingsObserver);
-        mContext.getContentResolver().registerContentObserver(Settings.System.getUriFor(
-                Settings.System.PA_PIE_GRAVITY), false, mPieSettingsObserver);
 
         SettingsObserver observer = new SettingsObserver(mHandler);
         observer.observe();
-    }
-
-    public void updatePieControls(boolean reset) {
-        ContentResolver resolver = mContext.getContentResolver();
-
-        if (reset) {
-            Settings.System.putIntForUser(resolver,
-                    Settings.System.PA_PIE_GRAVITY, 0, UserHandle.USER_CURRENT);
-            toggleOrientationListener(false);
-        } else {
-            getOrientationListener();
-            toggleOrientationListener(true);
-        }
-
-        if (mPieController == null) {
-            mPieController = PieController.getInstance();
-            mPieController.init(mContext, mWindowManager, this);
-        }
-        int gravity = Settings.System.getInt(resolver,
-                Settings.System.PA_PIE_GRAVITY, 0);
-        mPieController.resetPie(!reset, gravity);
-    }
-
-    public void toggleOrientationListener(boolean enable) {
-        if (mOrientationListener == null) {
-            if (!enable) {
-                // Do nothing if listener has already dropped
-                return;
-            } else {
-                boolean shouldEnable = Settings.System.getIntForUser(mContext.getContentResolver(),
-                        Settings.System.PA_PIE_STATE, 0, UserHandle.USER_CURRENT) == 1;
-                if (shouldEnable) {
-                    // Re-init Orientation listener for later action
-                    getOrientationListener();
-                } else {
-                    return;
-                }
-            }
-        }
-
-        if (enable && mPowerManager.isScreenOn()) {
-            mOrientationListener.enable();
-        } else {
-            mOrientationListener.disable();
-            // if it has been disabled, then don't leave it to
-            // prevent called from PhoneWindowManager
-            mOrientationListener = null;
-        }
-    }
-
-    private void getOrientationListener() {
-        if (mOrientationListener == null)
-            mOrientationListener = new OrientationEventListener(mContext,
-                    SensorManager.SENSOR_DELAY_NORMAL) {
-                @Override
-                public void onOrientationChanged(int orientation) {
-                    int rotation = mDisplay.getRotation();
-                    if (rotation != mOrientation) {
-                        if (mPieController != null) mPieController.detachPie();
-                        mOrientation = rotation;
-                    }
-                }
-            };
     }
 
     protected void notifyUserAboutHiddenNotifications() {
