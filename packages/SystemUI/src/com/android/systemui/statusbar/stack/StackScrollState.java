@@ -22,6 +22,8 @@ import android.view.ViewGroup;
 
 import com.android.systemui.R;
 import com.android.systemui.statusbar.DismissView;
+import com.android.systemui.statusbar.EmptyShadeView;
+import com.android.systemui.statusbar.ExpandableNotificationRow;
 import com.android.systemui.statusbar.ExpandableView;
 import com.android.systemui.statusbar.SpeedBumpView;
 
@@ -38,13 +40,12 @@ public class StackScrollState {
     private static final String CHILD_NOT_FOUND_TAG = "StackScrollStateNoSuchChild";
 
     private final ViewGroup mHostView;
-    private Map<ExpandableView, ViewState> mStateMap;
-    private final Rect mClipRect = new Rect();
+    private Map<ExpandableView, StackViewState> mStateMap;
     private final int mClearAllTopPadding;
 
     public StackScrollState(ViewGroup hostView) {
         mHostView = hostView;
-        mStateMap = new HashMap<ExpandableView, ViewState>();
+        mStateMap = new HashMap<ExpandableView, StackViewState>();
         mClearAllTopPadding = hostView.getContext().getResources().getDimensionPixelSize(
                 R.dimen.clear_all_padding_top);
     }
@@ -106,30 +107,20 @@ public class StackScrollState {
             if (!applyState(child, state)) {
                 continue;
             }
-            if (!state.gone) {
-                float alpha = child.getAlpha();
-                float yTranslation = child.getTranslationY();
-                float xTranslation = child.getTranslationX();
-                float zTranslation = child.getTranslationZ();
-                float scale = child.getScaleX();
-                int height = child.getActualHeight();
-                float newAlpha = state.alpha;
-                float newYTranslation = state.yTranslation;
-                float newZTranslation = state.zTranslation;
-                float newScale = state.scale;
-                int newHeight = state.height;
-                boolean becomesInvisible = newAlpha == 0.0f;
-                if (alpha != newAlpha && xTranslation == 0) {
-                    // apply layer type
-                    boolean becomesFullyVisible = newAlpha == 1.0f;
-                    boolean newLayerTypeIsHardware = !becomesInvisible && !becomesFullyVisible;
-                    int layerType = child.getLayerType();
-                    int newLayerType = newLayerTypeIsHardware
-                            ? View.LAYER_TYPE_HARDWARE
-                            : View.LAYER_TYPE_NONE;
-                    if (layerType != newLayerType) {
-                        child.setLayerType(newLayerType, null);
-                    }
+            if(child instanceof SpeedBumpView) {
+                performSpeedBumpAnimation(i, (SpeedBumpView) child, state, 0);
+            } else if (child instanceof DismissView) {
+                DismissView dismissView = (DismissView) child;
+                boolean visible = state.topOverLap < mClearAllTopPadding;
+                dismissView.performVisibilityAnimation(visible && !dismissView.willBeGone());
+            } else if (child instanceof EmptyShadeView) {
+                EmptyShadeView emptyShadeView = (EmptyShadeView) child;
+                boolean visible = state.topOverLap <= 0;
+                emptyShadeView.performVisibilityAnimation(
+                        visible && !emptyShadeView.willBeGone());
+            }
+        }
+    }
 
     /**
      * Applies a  {@link StackViewState} to an  {@link ExpandableView}.
@@ -215,14 +206,13 @@ public class StackScrollState {
             view.setAlpha(newAlpha);
         }
 
-                if(child instanceof SpeedBumpView) {
-                    float lineEnd = newYTranslation + newHeight / 2;
-                    performSpeedBumpAnimation(i, (SpeedBumpView) child, lineEnd);
-                } else if (child instanceof DismissView) {
-                    DismissView dismissView = (DismissView) child;
-                    boolean visible = state.topOverLap < mClearAllTopPadding;
-                    dismissView.performVisibilityAnimation(visible);
-                }
+        // apply visibility
+        int oldVisibility = view.getVisibility();
+        int newVisibility = becomesInvisible ? View.INVISIBLE : View.VISIBLE;
+        if (newVisibility != oldVisibility) {
+            if (!(view instanceof ExpandableView) || !((ExpandableView) view).willBeGone()) {
+                // We don't want views to change visibility when they are animating to GONE
+                view.setVisibility(newVisibility);
             }
         }
 
